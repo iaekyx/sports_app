@@ -4,7 +4,7 @@ from django.contrib import auth                #使用Django的auth认证组件
 from django.contrib.auth.models import User    #使用Django的认证组件需要使用User用户表
 from myapp.models import Article               #导入Article模型
 from myapp.models import Comment               #导入Comment模型
-from myapp.models import UserProfile
+from myapp.models import UserProfile,LikeNum
 import json
 from django.core import serializers
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -25,7 +25,7 @@ def register(request):  #用户注册函数
     password = data.get("password")
     User.objects.create_user(username=username,password=password)  #在User表创建用户记录
     user = User.objects.filter(username=username).first()
-    UserProfile.objects.create(user=user)
+    UserProfile.objects.create(user=user,nickname="",address="",height="",weight="",avatar="avatar/WechatIMG23_CikLcMn.jpeg",distance=0,step=0,calorie=0)
 
     return HttpResponse('注册成功')
  
@@ -82,9 +82,12 @@ def index(request):    #首页函数
         return HttpResponse(result_json,content_type='application/json')
  
  
-def article_detail(request,article_id):
-        article = Article.objects.get(id=article_id)    #从数据库找出id=article_id的文章对象
-        comment_list = Comment.objects.filter(article_id=article_id)  #从数据库找出该文章的评论数据对象
+def article_detail(request):
+        json_data = request.body
+        data = json.loads(json_data)
+        article_id = data.get('article_id')
+        article = Article.objects.get(post_id=article_id)    #从数据库找出id=article_id的文章对象
+        comment_list = Comment.objects.filter(post_id=article_id)  #从数据库找出该文章的评论数据对象
         all_article_list = [article]
         json_data = serializers.serialize('json', all_article_list)
         data1 = json.loads(json_data)
@@ -119,7 +122,7 @@ def comment_control(request):    #提交评论的处理函数
         user = User.objects.get(id=ID)
         author_id = user.id     #获取当前用户的ID
         profile = UserProfile.objects.get(user=user)
-        Comment.objects.create(comment_content=comment_content,pre_comment_id=pid,article_id=article_id,comment_author_id=author_id,avatar=profile.get_avatar_url(),nickname=profile.nickname)  #将提交的数据保存到数据库中
+        Comment.objects.create(comment_content=comment_content,pre_comment_id=pid,post_id=article_id,comment_author_id=author_id,avatar=profile.get_avatar_url(),nickname=profile.nickname,article_id=article_id)  #将提交的数据保存到数据库中
  
         article = list(Comment.objects.values('id','comment_content','pre_comment_id','article_id','comment_author_id','comment_time'))  #以键值对的形式取出评论对象，并且转化为列表list类型
         article_to_json = JsonResponse(article,safe=False)
@@ -289,9 +292,9 @@ def in_history(request):
         user = User.objects.get(id=ID)
         article_id = user.id
         profile = UserProfile.objects.get(user=user)
-        profile.distance = profile.distance+distance
-        profile.step = profile.step +step
-        profiel.calorie = profile.calorie +calorie
+        profile.distance = profile.distance+float(distance)
+        profile.step = profile.step +float(step)
+        profile.calorie = profile.calorie +float(calorie)
         profile.save()
         user_data = {
             'distance':distance,
@@ -325,7 +328,7 @@ def self_articles(request):
         ID = data.get('id')
         user = User.objects.get(id=ID)
       
-        article_list = Article.objects.filter(post_id=ID)    #从数据库找出id=article_id的文章对象
+        article_list = Article.objects.filter(author=user)    #从数据库找出id=article_id的文章对象
         json_data = serializers.serialize('json', article_list)
         data1 = json.loads(json_data)
         article_list = [entry['fields'] for entry in data1]
@@ -336,7 +339,45 @@ def self_articles(request):
         response_data ={"res":context}
         result_json = json.dumps(response_data)
         return HttpResponse(result_json,content_type='application/json')
-  
+
+def add_likes(request):
+        json_data = request.body
+        data = json.loads(json_data)
+        post_id = data.get('post_id')
+        ID = data.get('id')
+        if ID:
+            user = User.objects.get(id=ID)
+            article = Article.objects.get(post_id=post_id)    #从数据库找出id=article_id的文章对
+            record,flag = LikeNum.objects.get_or_create(user=user,article=article)
+            if flag:
+                article.likes+=1
+                article.save()
+            else:
+                article.likes-=1
+                article.save()
+                LikeNum.objects.get(user=user,article=article).delete()
+            return HttpResponse("SUCCESS")
+
+        else:
+            return HttpResponse("FAIL")
+def is_like(request):
+        json_data = request.body
+        data = json.loads(json_data)
+        post_id = data.get('post_id')
+        ID = data.get('id')
+        if ID:
+            user = User.objects.get(id=ID)
+            article = Article.objects.get(post_id=post_id)    #从数据库找出id=article_id的文章对
+            record,flag = LikeNum.objects.get_or_create(user=user,article=article)
+            if flag:
+                LikeNum.objects.get(user=user,article=article).delete()
+                return HttpResponse("False")
+            else:
+                return HttpResponse("True")
+
+        else:
+            return HttpResponse("False")
+
 def logout_view(request):
     logout(request)
     return HttpResponse("succeee")

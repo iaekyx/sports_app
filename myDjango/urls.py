@@ -25,7 +25,9 @@ urlpatterns = [
     path('register/',views.register),            #用户注册路由
     path('user_login/',views.user_login),        #用户登录路由
     path('index/',views.index),                  #首页路由
-    re_path('article_detail/(\d)/',views.article_detail),  #文章详情页路由，并传入文章的id
+  #  re_path('article_detail/(\d)/',views.article_detail),  #文章详情页路由，并传入文章的id
+
+    path('article_detail/',views.article_detail),  #文章详情页路由，并传入文章的id
     path('comment_control/',views.comment_control),   #提交评论处理的路由
     path('send_article/',views.send_article),
     path('send_sports_article/',views.send_sports_article),
@@ -35,6 +37,8 @@ urlpatterns = [
     path('get_information/',views.get_information),
     path('in_history/',views.in_history),
     path('get_history/',views.get_history),
-    path('self_articles/',views.self_articles)
+    path('self_articles/',views.self_articles),
+    path('add_likes/',views.add_likes),
+    path('is_like/',views.is_like)
     ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
